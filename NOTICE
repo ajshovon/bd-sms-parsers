@@ -1,0 +1,23 @@
+bd-sms-parsers
+Copyright (C) 2026 Jubayer (github.com/ajshovon)
+
+This product includes software derived from Cashiro
+(https://github.com/ritesh-kanwar/Cashiro), Copyright (C) Ritesh Kanwar,
+licensed under the GNU Affero General Public License version 3.
+
+Cashiro itself derives from PennyWise
+(https://github.com/sarim2000/pennywisai-tracker).
+
+Modifications made in this work, on 2026-09-01:
+  - Extracted the Bangladesh SMS parsers from Cashiro's `parser-core` module
+    into a standalone library; removed the 129 parsers for other countries and
+    the base classes supporting them (BaseIndianBankParser, BaseIranianBankParser,
+    BaseThailandBankParser, UAEBankParser) along with their tests.
+  - Renamed the Kotlin package from `com.ritesh.parser.core` to `me.shovon.bdparser`.
+  - Trimmed `BankParserFactory` to register only the nine Bangladesh parsers.
+  - Changed the default currency on `ParsedTransaction` from INR to BDT.
+  - Made the transaction-hash hex conversion locale-independent.
+  - Pinned an explicit Java 11 compilation target.
+
+As required by the AGPL, this work is also licensed under the GNU Affero
+General Public License version 3. See LICENSE for the full text.
