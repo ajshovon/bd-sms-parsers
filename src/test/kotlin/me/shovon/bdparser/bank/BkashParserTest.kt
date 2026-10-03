@@ -57,6 +57,19 @@ class BkashParserTest {
                 )
             ),
             ParserTestCase(
+                name = "Payment with promotional discount footer",
+                message = "Payment Tk 350.00 to Daraz successful. Fee Tk 0.00. Balance Tk 650.00. TrxID KL34MN56OP at 01/01/2024 11:30. Avail 10% discount on next purchase. Win exciting gifts!",
+                sender = "bKash",
+                expected = ExpectedTransaction(
+                    amount = BigDecimal("350.00"),
+                    currency = "BDT",
+                    type = TransactionType.EXPENSE,
+                    merchant = "Daraz",
+                    balance = BigDecimal("650.00"),
+                    reference = "KL34MN56OP"
+                )
+            ),
+            ParserTestCase(
                 name = "Received (push notification style)",
                 message = "You have received Tk 500.00 from 01700000000. Ref 123. Fee Tk 0.00. Balance Tk 1,000.00. TrxID EF90GH12IJ at 01/01/2024 12:00",
                 sender = "16247",

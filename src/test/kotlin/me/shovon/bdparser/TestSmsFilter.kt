@@ -68,4 +68,17 @@ class TestSmsFilter {
             assertTrue(SmsFilter.isTransactionMessage(msg), "Should accept transaction: $msg")
         }
     }
+
+    @Test
+    fun `isTransactionMessage accepts real transactions with promotional footers`() {
+        val transactions = listOf(
+            "Rs.500.00 debited from A/c XX1234. Avl Bal Rs.4500.00 Ref:REF001. Avail 10% discount on next ride!",
+            "Payment Tk 150.00 successful. TrxID 8B7C. Offer valid till 31 Oct.",
+            "Rs.1000.00 credited to A/c XX1234 from SENDER. Ref:TXN123. Win exciting prizes!"
+        )
+
+        for (msg in transactions) {
+            assertTrue(SmsFilter.isTransactionMessage(msg), "Should accept transaction with footer: $msg")
+        }
+    }
 }

@@ -264,9 +264,17 @@ abstract class BangladeshMfsParser : BankParser() {
         val lowerMessage = message.lowercase()
 
         if (otpKeywords.any { lowerMessage.contains(it) }) return false
-        if (promoKeywords.any { lowerMessage.contains(it) }) return false
-        if (promoWordPattern.containsMatchIn(message)) return false
         if (failureKeywords.any { lowerMessage.contains(it) }) return false
+
+        val hasExplicitConfirmation = lowerMessage.contains("trxid") ||
+            lowerMessage.contains("txnid") ||
+            lowerMessage.contains("transaction id") ||
+            (lowerMessage.contains("successful") && (lowerMessage.contains("balance") || lowerMessage.contains("fee")))
+
+        if (!hasExplicitConfirmation) {
+            if (promoKeywords.any { lowerMessage.contains(it) }) return false
+            if (promoWordPattern.containsMatchIn(message)) return false
+        }
 
         return expenseKeywords.any { lowerMessage.contains(it) } ||
                 incomeKeywords.any { lowerMessage.contains(it) }

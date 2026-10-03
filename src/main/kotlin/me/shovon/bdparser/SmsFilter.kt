@@ -29,13 +29,23 @@ object SmsFilter {
             return false
         }
 
-        // Skip promotional messages
-        if (lowerMessage.contains("offer") ||
-            lowerMessage.contains("discount") ||
-            lowerMessage.contains("cashback offer") ||
-            lowerMessage.contains("win ")
-        ) {
-            return false
+        // Skip promotional messages unless message carries an explicit transaction confirmation
+        val hasExplicitTxn = lowerMessage.contains("trxid") ||
+            lowerMessage.contains("txnid") ||
+            lowerMessage.contains("ref no") ||
+            lowerMessage.contains("reference no") ||
+            lowerMessage.contains("ref:") ||
+            (lowerMessage.contains("debited") && (lowerMessage.contains("a/c") || lowerMessage.contains("acct") || lowerMessage.contains("card"))) ||
+            (lowerMessage.contains("credited") && (lowerMessage.contains("a/c") || lowerMessage.contains("acct") || lowerMessage.contains("card")))
+
+        if (!hasExplicitTxn) {
+            if (lowerMessage.contains("offer") ||
+                lowerMessage.contains("discount") ||
+                lowerMessage.contains("cashback offer") ||
+                lowerMessage.contains("win ")
+            ) {
+                return false
+            }
         }
 
         // Skip payment request messages (common across banks)
@@ -69,7 +79,7 @@ object SmsFilter {
         // Must contain transaction keywords
         val transactionKeywords = listOf(
             "debited", "credited", "withdrawn", "withdrawal", "withdrawing", "deposited",
-            "spent", "received", "transferred", "paid", "credit", "debit"
+            "spent", "received", "transferred", "paid", "payment", "purchase", "credit", "debit"
         )
 
         return transactionKeywords.any { lowerMessage.contains(it) }
