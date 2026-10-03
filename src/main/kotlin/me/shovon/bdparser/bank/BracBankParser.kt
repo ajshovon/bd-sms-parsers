@@ -45,16 +45,13 @@ class BracBankParser : BangladeshBankParser() {
                 upper.matches(Regex("""^[A-Z]{2}-BRACBK-[A-Z]$"""))
     }
 
-    /**
-     * Body-marker fallback for when Mobile Number Portability has rewritten the sender ID away
-     * from a recognisable BRAC Bank sender: matches when the body mentions "BBL A/C" (BRAC
-     * Bank's own account-label wording) or "BRAC Bank" by name.
-     */
-    override fun canHandleMessage(sender: String, message: String): Boolean {
-        if (canHandle(sender)) return true
+    /** "BBL A/C" is BRAC Bank's own account-label wording; "BRAC Bank" is the brand itself. */
+    override fun matchesBodyMarkers(message: String): Boolean {
         val lower = message.lowercase()
         return lower.contains("bbl a/c") || lower.contains("brac bank")
     }
+
+    override fun matchesKnownFormat(message: String): Boolean = match(message) != null
 
     private val takaFigure = """([0-9][0-9,]*(?:\.\d{1,2})?)"""
     private val balanceSuffix = Regex(

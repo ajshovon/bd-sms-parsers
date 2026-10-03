@@ -84,12 +84,29 @@ class MutualTrustBankParser : BangladeshBankParser() {
      * short and generic, so it is matched with a word-boundary regex to avoid false positives
      * inside unrelated words (e.g. "assembly", "nimble").
      */
-    override fun canHandleMessage(sender: String, message: String): Boolean {
-        if (canHandle(sender)) return true
+    override fun matchesBodyMarkers(message: String): Boolean {
         val lower = message.lowercase()
         if (lower.contains("mtb hotline") || lower.contains("mtb card")) return true
-        return Regex("""\bmtb\b""", RegexOption.IGNORE_CASE).containsMatchIn(message)
+        return mtbWordPattern.containsMatchIn(message)
     }
+
+    /**
+     * Four of MTB's transaction formats - the MOTO card alert, "Payment of BDT X credited to
+     * Card-", the generic "Your account has been debited by BDT X" and the ATM withdrawal -
+     * carry no "MTB" token anywhere (their only trailer is a bare "Helpline <shortcode>"), as
+     * does the monthly-bill statement notice. Under MNP those were undispatchable, so the
+     * format patterns themselves serve as the ownership test.
+     *
+     * Note [accountDebitedGenericPattern] is the loosest of these; an unsupported bank sending
+     * the same "Your account has been debited by BDT X" wording from a ported number would be
+     * attributed to MTB. That is deliberate - dropping a real transaction silently is the worse
+     * failure - but it is the first thing to tighten if a conflicting issuer shows up.
+     */
+    override fun matchesKnownFormat(message: String): Boolean =
+        match(message) != null || statementPattern.containsMatchIn(message)
+
+    /** Compiled once; [canHandleMessage] runs for every parser against every unmatched SMS. */
+    private val mtbWordPattern = Regex("""\bmtb\b""", RegexOption.IGNORE_CASE)
 
     private val takaFigure = """([0-9][0-9,]*(?:\.\d{1,2})?)"""
 

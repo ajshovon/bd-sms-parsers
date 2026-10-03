@@ -48,6 +48,43 @@ abstract class BangladeshBankParser : BankParser() {
     override fun getCurrency(): String = "BDT"
 
     /**
+     * Brand/channel words that identify this bank when they appear in the message BODY, e.g.
+     * "citytouch", "BBL A/C", "MTB Hotline", "skybanking". Subclasses override this instead of
+     * [canHandleMessage]; see that method for how it is combined with [matchesKnownFormat].
+     */
+    protected open fun matchesBodyMarkers(message: String): Boolean = false
+
+    /**
+     * True when the body matches one of THIS parser's own supported SMS formats.
+     *
+     * Subclasses implement this by delegating to the same pattern set their extractors already
+     * use, which makes it a far stronger ownership test than [matchesBodyMarkers]: a brand word
+     * is incidental content that a bank may or may not include, whereas a format match means
+     * this parser can actually produce a transaction from the message.
+     */
+    protected open fun matchesKnownFormat(message: String): Boolean = false
+
+    /**
+     * Body-based dispatch for when Mobile Number Portability has rewritten the sender ID away
+     * from a recognisable sender for this bank (Bangladeshi bank SMS then arrive from a bare
+     * mobile number, and two different banks' messages can arrive from the SAME number, so the
+     * body is the only discriminator left).
+     *
+     * Brand markers alone are not sufficient: several supported formats carry no brand token at
+     * all - MTB's "Successful MOTO transaction of BDT X ... by card- ... Helpline <shortcode>"
+     * card alert names neither "MTB" nor anything else bank-specific, and City Bank's
+     * "<date> ATM TXN Tk. X Withdrawal ..." and EBL's "AC <masked> is credited with BDT X as
+     * NPSB FUND TRANSFER" are the same. Those messages were undispatchable under MNP even
+     * though their parser parses them correctly once reached, so [matchesKnownFormat] is
+     * consulted as well.
+     *
+     * Ties are broken by registry order in [BankParserFactory], where the brand-carrying
+     * parser for a given format comes first.
+     */
+    override fun canHandleMessage(sender: String, message: String): Boolean =
+        canHandle(sender) || matchesBodyMarkers(message) || matchesKnownFormat(message)
+
+    /**
      * Safe default for the four Bangladesh full-service banks sharing this base: `false`
      * (balance is NOT assumed to be available credit). Only Eastern Bank (EBL) and Mutual
      * Trust Bank (MTB) have verified card-transaction alert shapes ("Current Balance BDT Y",

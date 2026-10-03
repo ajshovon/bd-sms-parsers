@@ -48,16 +48,17 @@ class CityBankParser : BangladeshBankParser() {
                 upper.matches(Regex("""^[A-Z]{2}-CITYBK-[A-Z]$"""))
     }
 
-    /**
-     * Body-marker fallback for when Mobile Number Portability has rewritten the sender ID away
-     * from a recognisable City Bank sender: matches when the body mentions "citytouch" (City
-     * Bank's digital banking channel) or "City Bank" by name.
-     */
-    override fun canHandleMessage(sender: String, message: String): Boolean {
-        if (canHandle(sender)) return true
+    /** "citytouch" is City Bank's digital banking channel; "City Bank" is the brand itself. */
+    override fun matchesBodyMarkers(message: String): Boolean {
         val lower = message.lowercase()
         return lower.contains("citytouch") || lower.contains("city bank")
     }
+
+    /**
+     * The ATM / E-COMM/POS / no-channel-label formats carry no brand token, so under MNP they
+     * are only reachable via the format patterns themselves.
+     */
+    override fun matchesKnownFormat(message: String): Boolean = match(message) != null
 
     // Groups: 1 = amount, 2 = action word (Deposit/Withdrawal/Purchased), 3 = balance
     private val channelTxnPattern = Regex(

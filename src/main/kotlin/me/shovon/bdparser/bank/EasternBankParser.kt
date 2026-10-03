@@ -78,12 +78,22 @@ class EasternBankParser : BangladeshBankParser() {
      * "EBL CARDS", "EBL Skybanking ..."). "EBL" alone is short and generic, so it is matched
      * with a word-boundary regex to avoid false positives inside unrelated words.
      */
-    override fun canHandleMessage(sender: String, message: String): Boolean {
-        if (canHandle(sender)) return true
-        val lower = message.lowercase()
-        if (lower.contains("skybanking")) return true
-        return Regex("""\bebl\b""", RegexOption.IGNORE_CASE).containsMatchIn(message)
+    override fun matchesBodyMarkers(message: String): Boolean {
+        if (message.contains("skybanking", ignoreCase = true)) return true
+        return eblWordPattern.containsMatchIn(message)
     }
+
+    /**
+     * The account-level "AC <masked> is credited with BDT X as NPSB FUND TRANSFER" alert carries
+     * no "EBL" token, so under MNP it is only reachable via the format patterns themselves. The
+     * monthly-bill statement notice is included too, since it is dispatched through the same
+     * [canHandleMessage] gate before [isBalanceUpdateNotification] ever runs.
+     */
+    override fun matchesKnownFormat(message: String): Boolean =
+        match(message) != null || statementPattern.containsMatchIn(message)
+
+    /** Compiled once; [canHandleMessage] runs for every parser against every unmatched SMS. */
+    private val eblWordPattern = Regex("""\bebl\b""", RegexOption.IGNORE_CASE)
 
     private val takaFigure = """([0-9][0-9,]*(?:\.\d{1,2})?)"""
 
