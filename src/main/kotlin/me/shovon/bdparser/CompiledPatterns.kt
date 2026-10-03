@@ -60,8 +60,13 @@ object CompiledPatterns {
      * preceding context looks like a fee/balance/commission/charge label.
      */
     object TakaAmount {
-        /** Case-insensitive Taka currency token: Tk, Tk., TK, Taka, BDT, ৳ */
-        private const val CURRENCY_TOKEN = """(?:Tk\.?|Taka|BDT|৳)"""
+        /**
+         * Case-insensitive Taka currency token: Tk, Tk., TK, Taka, BDT, ৳.
+         * `(?<![A-Za-z])` keeps the token from matching the tail of a longer word: without it
+         * a reference such as "TrxID BTK4567XY" yields a "TK4567" match that [GENERIC] would
+         * report as a Taka amount of 4567.
+         */
+        private const val CURRENCY_TOKEN = """(?<![A-Za-z])(?:Tk\.?|Taka|BDT|৳)"""
 
         /** "Amount: Tk 500.00" / "Amount Tk500.00" - explicit amount label used by Nagad/Upay */
         val AMOUNT_LABEL = Regex(
@@ -79,7 +84,7 @@ object CompiledPatterns {
     }
 
     object TakaBalance {
-        private const val CURRENCY_TOKEN = """(?:Tk\.?|Taka|BDT|৳)"""
+        private const val CURRENCY_TOKEN = """(?<![A-Za-z])(?:Tk\.?|Taka|BDT|৳)"""
 
         /** "Balance: Tk 1,000.00" / "Balance Tk1,234.56" */
         val BALANCE_LABEL = Regex(
@@ -91,7 +96,7 @@ object CompiledPatterns {
     }
 
     object TakaFee {
-        private const val CURRENCY_TOKEN = """(?:Tk\.?|Taka|BDT|৳)"""
+        private const val CURRENCY_TOKEN = """(?<![A-Za-z])(?:Tk\.?|Taka|BDT|৳)"""
 
         /** "Fee: Tk 18.50" / "Fee Tk0.00" */
         val FEE_LABEL = Regex(

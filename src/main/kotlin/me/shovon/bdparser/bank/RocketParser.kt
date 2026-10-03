@@ -40,6 +40,9 @@ class RocketParser : BangladeshMfsParser() {
         if (canHandle(sender)) return true
         val lower = message.lowercase()
         if (lower.contains("rocket")) return true
-        return Regex("""\bdbbl\b""", RegexOption.IGNORE_CASE).containsMatchIn(message)
+        return dbblWordPattern.containsMatchIn(message)
     }
+
+    /** Compiled once; [canHandleMessage] runs for every parser against every unmatched SMS. */
+    private val dbblWordPattern = Regex("""\bdbbl\b""", RegexOption.IGNORE_CASE)
 }

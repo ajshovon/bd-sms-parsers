@@ -77,6 +77,34 @@ abstract class BankParser {
         private const val MAX_SMS_LENGTH = 5000
 
         /**
+         * A MASKED card number - "XXXX1234", "xx1234", "**1234". The mask prefix is mandatory:
+         * made optional it degenerates to a bare `\d{4}`, which matches any four-digit run in
+         * the message (a date, a biller code, a wallet number) and so says nothing about
+         * whether a card is involved.
+         */
+        private val MASKED_CARD_NUMBER = Regex("""(?:x{2,}|\*{2,})\d{4}""", RegexOption.IGNORE_CASE)
+
+        /**
+         * Credit-card available-limit wordings, ordered most- to least-specific. Hoisted to the
+         * companion so the patterns are compiled once per process rather than on every
+         * [extractAvailableLimit] call.
+         */
+        private val AVAILABLE_LIMIT_PATTERNS = listOf(
+            // "Available limit Rs.111,111.89" - Federal Bank format (no space after Rs.)
+            Regex("""Available\s+limit\s+Rs\.([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE),
+            // "Available limit Rs. 111,111.89" or "Available limit: Rs 111,111.89"
+            Regex("""Available\s+limit:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE),
+            // "Avl Lmt Rs.111,111.89" or "Avl Lmt: Rs 111,111.89" (ICICI and others)
+            Regex("""Avl\s+Lmt:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE),
+            // "Avail Limit Rs.111,111.89"
+            Regex("""Avail\s+Limit:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE),
+            // "Available Credit Limit: Rs.111,111.89"
+            Regex("""Available\s+Credit\s+Limit:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE),
+            // "Limit: Rs.111,111.89" (generic, but only for credit card messages)
+            Regex("""(?:^|\s)Limit:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE)
+        )
+
+        /**
          * Generic data class representing a parsed balance-update notification.
          * Used by [isBalanceUpdateNotification] / [parseBalanceUpdate] and consumed by
          * workers that call [AccountBalanceRepository.insertBalanceUpdate].
@@ -514,35 +542,11 @@ abstract class BankParser {
      * This is the remaining credit available to spend, NOT the total credit limit.
      */
     protected open fun extractAvailableLimit(message: String): BigDecimal? {
-
-        // Common patterns for credit limit across banks
-        val creditLimitPatterns = listOf(
-            // "Available limit Rs.111,111.89" - Federal Bank format (no space after Rs.)
-            Regex("""Available\s+limit\s+Rs\.([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE),
-            // "Available limit Rs. 111,111.89" or "Available limit: Rs 111,111.89"
-            Regex(
-                """Available\s+limit:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""",
-                RegexOption.IGNORE_CASE
-            ),
-            // "Avl Lmt Rs.111,111.89" or "Avl Lmt: Rs 111,111.89" (ICICI and others)
-            Regex("""Avl\s+Lmt:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE),
-            // "Avail Limit Rs.111,111.89"
-            Regex("""Avail\s+Limit:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE),
-            // "Available Credit Limit: Rs.111,111.89"
-            Regex(
-                """Available\s+Credit\s+Limit:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""",
-                RegexOption.IGNORE_CASE
-            ),
-            // "Limit: Rs.111,111.89" (generic, but only for credit card messages)
-            Regex("""(?:^|\s)Limit:?\s*Rs\.?\s*([0-9,]+(?:\.\d{2})?)""", RegexOption.IGNORE_CASE)
-        )
-
-        for ((index, pattern) in creditLimitPatterns.withIndex()) {
+        for (pattern in AVAILABLE_LIMIT_PATTERNS) {
             pattern.find(message)?.let { match ->
                 val limitStr = match.groupValues[1].replace(",", "")
                 return try {
-                    val limit = BigDecimal(limitStr)
-                    limit
+                    BigDecimal(limitStr)
                 } catch (e: NumberFormatException) {
                     null
                 }
@@ -597,10 +601,9 @@ abstract class BankParser {
             }
         }
 
-        // Check for masked card number patterns (e.g., "XXXX1234", "*1234", "ending 1234")
+        // Check for masked card number patterns (e.g., "XXXX1234", "**1234")
         // BUT only if we haven't already excluded it as an account transaction
-        val maskedCardRegex = Regex("""(?:xx|XX|\*{2,})?\d{4}""")
-        if (lowerMessage.contains("ending") && maskedCardRegex.containsMatchIn(message)) {
+        if (lowerMessage.contains("ending") && MASKED_CARD_NUMBER.containsMatchIn(message)) {
             return true
         }
 

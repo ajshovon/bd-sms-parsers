@@ -43,6 +43,9 @@ class TapParser : BangladeshMfsParser() {
         if (canHandle(sender)) return true
         val lower = message.lowercase()
         if (lower.contains("trust axiata")) return true
-        return Regex("""\btap\b""", RegexOption.IGNORE_CASE).containsMatchIn(message)
+        return tapWordPattern.containsMatchIn(message)
     }
+
+    /** Compiled once; [canHandleMessage] runs for every parser against every unmatched SMS. */
+    private val tapWordPattern = Regex("""\btap\b""", RegexOption.IGNORE_CASE)
 }

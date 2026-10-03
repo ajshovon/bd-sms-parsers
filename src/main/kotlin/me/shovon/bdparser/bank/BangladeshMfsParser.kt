@@ -44,6 +44,15 @@ abstract class BangladeshMfsParser : BankParser() {
     // must not populate the bank-account field with a phone number.
     override fun extractAccountLast4(message: String): String? = null
 
+    /**
+     * BD MFS transactions always move money through a mobile wallet, never a debit/credit card,
+     * so this is unconditionally false. The base [BankParser.detectIsCard] heuristic would
+     * otherwise false-positive on ordinary wallet wording: a bKash Mobile Recharge receipt
+     * ("... request of Tk 500.00 for ending 1234 was successful") contains the word "ending"
+     * followed by a 4-digit run - the base masked-card check - yet names no card at all.
+     */
+    override fun detectIsCard(message: String): Boolean = false
+
     // ------------------------------------------------------------------
     // Sender matching
     // ------------------------------------------------------------------
@@ -222,8 +231,21 @@ abstract class BangladeshMfsParser : BankParser() {
         RegexOption.IGNORE_CASE
     )
 
+    /**
+     * "Your payment of Tk 500.00 to SHOP has been refunded." - a refund receipt names the
+     * original outgoing action it reverses ("payment"/"paid"/"send money"), so the
+     * [expenseKeywords] sweep would claim it first and book an incoming refund as an expense.
+     * "refund" is already listed in [incomeKeywords], but could never win from there; checked
+     * up front for the same reason [cashbackReceivedPattern] is.
+     */
+    protected val refundPattern = Regex(
+        """\brefund(?:ed|s)?\b""",
+        RegexOption.IGNORE_CASE
+    )
+
     override fun extractTransactionType(message: String): TransactionType? {
         if (cashbackReceivedPattern.containsMatchIn(message)) return TransactionType.INCOME
+        if (refundPattern.containsMatchIn(message)) return TransactionType.INCOME
 
         val lowerMessage = message.lowercase()
 

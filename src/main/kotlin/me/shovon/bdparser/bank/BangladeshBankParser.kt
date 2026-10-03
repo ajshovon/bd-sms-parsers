@@ -73,15 +73,23 @@ abstract class BangladeshBankParser : BankParser() {
         }
     }
 
-    /** "A/C: 12345**6789", "AC 12345**6789", "Account XXXXX000000" */
+    /**
+     * "A/C: 12345**6789", "AC 12345**6789", "Account XXXXX000000".
+     *
+     * The leading `(?<![A-Za-z])` is required: without it the unanchored "AC" alternative also
+     * matches the tail of an unrelated word, so a merchant name like "FAC 12345 SHOP" in an
+     * "EBL CARDS: Purchase txn ..." alert reads as an account number - yielding the wrong
+     * [me.shovon.bdparser.ParsedTransaction.accountLast4] AND suppressing [detectIsCard],
+     * because account wording always wins there.
+     */
     protected open val bankAccountMaskPattern: Regex = Regex(
-        """(?:A/?C|Account)\s*:?\s*([0-9Xx*]{4,})""",
+        """(?<![A-Za-z])(?:A/?C|Account)\s*:?\s*([0-9Xx*]{4,})""",
         RegexOption.IGNORE_CASE
     )
 
     /** "card- 4600***0000", "Card 532900**0000", "MTB card- 4600***0000" */
     protected open val bankCardMaskPattern: Regex = Regex(
-        """card[\s-]*:?\s*([0-9Xx*]{4,})""",
+        """(?<![A-Za-z])card[\s-]*:?\s*([0-9Xx*]{4,})""",
         RegexOption.IGNORE_CASE
     )
 

@@ -69,10 +69,12 @@ class BkashParser : BangladeshMfsParser() {
         val lower = message.lowercase()
         if (lower.contains("bkash")) return true
         val hasTrxId = lower.contains("trxid")
-        val hasTaka = Regex("""\b(tk|taka)\b""", RegexOption.IGNORE_CASE).containsMatchIn(message) ||
-                message.contains("৳")
+        val hasTaka = takaTokenPattern.containsMatchIn(message) || message.contains("৳")
         return hasTrxId && hasTaka
     }
+
+    /** Compiled once; [canHandleMessage] runs for every parser against every unmatched SMS. */
+    private val takaTokenPattern = Regex("""\b(tk|taka)\b""", RegexOption.IGNORE_CASE)
 
     // ------------------------------------------------------------------
     // Merchant-payment-ID suffix stripping ("-1-RM10001" / "-RM10002")
